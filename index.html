@@ -6,15 +6,15 @@
 <title>Mechanical Dragonfly</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;background:#0a0e16;font-family:system-ui,-apple-system,sans-serif}
+html,body{width:100%;height:100%;overflow:hidden;background:#070b12;font-family:system-ui,-apple-system,sans-serif}
 #c{display:block;width:100%;height:100%;touch-action:none}
-#ui{position:absolute;left:0;right:0;bottom:0;padding:14px 14px 26px;background:linear-gradient(transparent,rgba(0,0,0,.8));color:#e8eef8;pointer-events:none;z-index:10}
-#ui .row{display:flex;gap:8px;flex-wrap:wrap;pointer-events:auto;margin-bottom:8px}
-button{background:#ff9a1a;color:#111;border:none;border-radius:999px;padding:10px 16px;font-weight:600;font-size:14px}
-button.secondary{background:rgba(255,255,255,.14);color:#e8eef8}
-#title{font-size:15px;font-weight:700;margin-bottom:4px}
-#info{font-size:12px;opacity:.8}
-#err{position:absolute;top:12px;left:12px;right:12px;color:#ff8a8a;font-size:13px;z-index:20;display:none;white-space:pre-wrap}
+#ui{position:absolute;left:0;right:0;bottom:0;padding:12px 12px 24px;background:linear-gradient(transparent,rgba(0,0,0,.82));color:#e8eef8;pointer-events:none;z-index:10}
+#ui .row{display:flex;gap:7px;flex-wrap:wrap;pointer-events:auto;margin-bottom:7px}
+button{background:#ff9a1a;color:#111;border:none;border-radius:999px;padding:9px 14px;font-weight:600;font-size:13px}
+button.secondary{background:rgba(255,255,255,.13);color:#e8eef8}
+#title{font-size:14px;font-weight:700;margin-bottom:3px}
+#info{font-size:11px;opacity:.78}
+#err{position:absolute;top:10px;left:10px;right:10px;color:#ff8a8a;font-size:12px;z-index:20;display:none;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -25,9 +25,10 @@ button.secondary{background:rgba(255,255,255,.14);color:#e8eef8}
   <div class="row">
     <button id="btnFlap">拍翅中</button>
     <button id="btnCut" class="secondary">打開胸部</button>
-    <button id="btnReset" class="secondary">重置視角</button>
+    <button id="btnExplode" class="secondary">炸裂展開</button>
+    <button id="btnReset" class="secondary">重置</button>
   </div>
-  <div id="info">拖曳旋轉 · 雙指/滾輪縮放</div>
+  <div id="info">拖曳旋轉 · 雙指/滾輪縮放 · 可切開與炸裂組裝</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
@@ -43,14 +44,14 @@ button.secondary{background:rgba(255,255,255,.14);color:#e8eef8}
     renderer.setSize(innerWidth,innerHeight);
     if(renderer.outputColorSpace!==undefined) renderer.outputColorSpace=THREE.SRGBColorSpace;
     renderer.toneMapping=THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure=1.2;
+    renderer.toneMappingExposure=1.18;
 
     var scene=new THREE.Scene();
-    scene.background=new THREE.Color(0x0a0e16);
+    scene.background=new THREE.Color(0x070b12);
 
-    var camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.5,500);
-    var target=new THREE.Vector3(0,6,0);
-    var spherical={radius:160, theta:0.7, phi:1.15};
+    var camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,0.4,500);
+    var target=new THREE.Vector3(0,4,0);
+    var spherical={radius:150, theta:0.75, phi:1.12};
     function updateCam(){
       camera.position.set(
         target.x + spherical.radius*Math.sin(spherical.phi)*Math.sin(spherical.theta),
@@ -61,7 +62,7 @@ button.secondary{background:rgba(255,255,255,.14);color:#e8eef8}
     }
     updateCam();
 
-    var dragging=false, lastX=0, lastY=0, pointers={};
+    var dragging=false,lastX=0,lastY=0,pointers={};
     canvas.addEventListener('pointerdown',function(e){
       pointers[e.pointerId]=[e.clientX,e.clientY];
       if(Object.keys(pointers).length===1){dragging=true;lastX=e.clientX;lastY=e.clientY;}
@@ -70,134 +71,225 @@ button.secondary{background:rgba(255,255,255,.14);color:#e8eef8}
     canvas.addEventListener('pointermove',function(e){
       if(!pointers[e.pointerId]) return;
       var ids=Object.keys(pointers);
-      if(ids.length===1 && dragging){
-        var dx=e.clientX-lastX, dy=e.clientY-lastY;
-        lastX=e.clientX; lastY=e.clientY;
-        spherical.theta -= dx*0.005;
-        spherical.phi = Math.max(0.2, Math.min(Math.PI-0.2, spherical.phi+dy*0.005));
+      if(ids.length===1&&dragging){
+        var dx=e.clientX-lastX,dy=e.clientY-lastY;
+        lastX=e.clientX;lastY=e.clientY;
+        spherical.theta-=dx*0.005;
+        spherical.phi=Math.max(0.18,Math.min(Math.PI-0.18,spherical.phi+dy*0.005));
         updateCam();
-      } else if(ids.length===2){
-        var p0=pointers[ids[0]], p1=pointers[ids[1]];
-        var prevDist=Math.hypot(p0[0]-p1[0], p0[1]-p1[1]);
+      }else if(ids.length===2){
+        var p0=pointers[ids[0]],p1=pointers[ids[1]];
+        var prev=Math.hypot(p0[0]-p1[0],p0[1]-p1[1]);
         pointers[e.pointerId]=[e.clientX,e.clientY];
-        p0=pointers[ids[0]]; p1=pointers[ids[1]];
-        var dist=Math.hypot(p0[0]-p1[0], p0[1]-p1[1]);
-        if(prevDist>0){
-          spherical.radius *= prevDist/dist;
-          spherical.radius=Math.max(50,Math.min(280,spherical.radius));
-          updateCam();
-        }
+        p0=pointers[ids[0]];p1=pointers[ids[1]];
+        var dist=Math.hypot(p0[0]-p1[0],p0[1]-p1[1]);
+        if(prev>0){spherical.radius=Math.max(48,Math.min(280,spherical.radius*(prev/dist)));updateCam();}
       }
     });
-    function up(e){delete pointers[e.pointerId]; if(Object.keys(pointers).length===0) dragging=false;}
-    canvas.addEventListener('pointerup',up);
-    canvas.addEventListener('pointercancel',up);
+    function up(e){delete pointers[e.pointerId];if(!Object.keys(pointers).length)dragging=false;}
+    canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);
     canvas.addEventListener('wheel',function(e){
       e.preventDefault();
-      spherical.radius *= (e.deltaY>0?1.08:0.92);
-      spherical.radius=Math.max(50,Math.min(280,spherical.radius));
+      spherical.radius=Math.max(48,Math.min(280,spherical.radius*(e.deltaY>0?1.08:0.92)));
       updateCam();
     },{passive:false});
 
-    var key=new THREE.DirectionalLight(0xfff5e8,2.6); key.position.set(60,90,50); scene.add(key);
-    var fill=new THREE.DirectionalLight(0x88b0ff,0.95); fill.position.set(-50,30,-40); scene.add(fill);
-    var rim=new THREE.DirectionalLight(0xffb040,1.0); rim.position.set(-30,40,-80); scene.add(rim);
-    scene.add(new THREE.HemisphereLight(0xc8d8ff,0x1a2030,0.55));
-    scene.add(new THREE.AmbientLight(0x304050,0.5));
+    var key=new THREE.DirectionalLight(0xfff6ea,2.5);key.position.set(55,85,45);scene.add(key);
+    var fill=new THREE.DirectionalLight(0x8ab4ff,0.9);fill.position.set(-55,28,-35);scene.add(fill);
+    var rim=new THREE.DirectionalLight(0xffb040,1.05);rim.position.set(-25,35,-75);scene.add(rim);
+    scene.add(new THREE.HemisphereLight(0xc8d8ff,0x152030,0.5));
+    scene.add(new THREE.AmbientLight(0x2a3548,0.45));
 
-    var bodyMat=new THREE.MeshStandardMaterial({color:0x1c2636,roughness:0.45,metalness:0.15});
-    var accentMat=new THREE.MeshStandardMaterial({color:0xff9a1a,roughness:0.28,metalness:0.4,emissive:0xff9a1a,emissiveIntensity:0.25});
-    var steelMat=new THREE.MeshStandardMaterial({color:0xb8c0ce,roughness:0.28,metalness:0.7});
-    var wingMat=new THREE.MeshStandardMaterial({color:0xd8e6f8,roughness:0.25,metalness:0.05,transparent:true,opacity:0.8,side:THREE.DoubleSide});
-    var eyeMat=new THREE.MeshStandardMaterial({color:0x0a1018,roughness:0.2,emissive:0x152030,emissiveIntensity:0.35});
+    var bodyMat=new THREE.MeshStandardMaterial({color:0x1a2434,roughness:0.42,metalness:0.18});
+    var accentMat=new THREE.MeshStandardMaterial({color:0xff9a1a,roughness:0.26,metalness:0.45,emissive:0xff9a1a,emissiveIntensity:0.28});
+    var steelMat=new THREE.MeshStandardMaterial({color:0xc0c8d6,roughness:0.24,metalness:0.72});
+    var wingMat=new THREE.MeshStandardMaterial({color:0xd6e6fa,roughness:0.22,metalness:0.04,transparent:true,opacity:0.72,side:THREE.DoubleSide});
+    var veinMat=new THREE.MeshStandardMaterial({color:0xa8bdd8,roughness:0.35,metalness:0.15,transparent:true,opacity:0.85});
+    var eyeMat=new THREE.MeshStandardMaterial({color:0x0c121c,roughness:0.18,metalness:0.35,emissive:0x1a2840,emissiveIntensity:0.4});
+    var facetMat=new THREE.MeshStandardMaterial({color:0x101820,roughness:0.25,metalness:0.55,emissive:0x203040,emissiveIntensity:0.25});
 
-    var root=new THREE.Group(); scene.add(root);
-    var thorax=new THREE.Mesh(new THREE.BoxGeometry(22,16,48),bodyMat); root.add(thorax);
-    var head=new THREE.Mesh(new THREE.SphereGeometry(11,20,16),bodyMat); head.position.set(0,2,34); root.add(head);
-    [-1,1].forEach(function(sx){
-      var eye=new THREE.Mesh(new THREE.SphereGeometry(6.2,14,12),eyeMat);
-      eye.position.set(sx*8.5,4,38); eye.scale.set(1,1.2,0.9); root.add(eye);
-    });
-    for(var i=0;i<7;i++){
-      var t=i/6, r=6.5*(1-t*0.72);
-      var seg=new THREE.Mesh(new THREE.CylinderGeometry(r*0.95,r,12,12),bodyMat);
-      seg.rotation.x=Math.PI/2; seg.position.z=-28-i*12; root.add(seg);
+    var root=new THREE.Group();scene.add(root);
+    var parts=[];
+    function addPart(mesh, parent, explodeDir){
+      parent.add(mesh);
+      var home=mesh.position.clone();
+      var dir=(explodeDir||new THREE.Vector3(0,1,0)).clone().normalize();
+      parts.push({mesh:mesh, home:home, dir:dir});
+      return mesh;
     }
-    [[-1,10,22],[1,10,22],[-1,-2,20],[1,-2,20],[-1,-14,18],[1,-14,18]].forEach(function(item){
-      var sx=item[0],z=item[1],len=item[2];
-      var leg=new THREE.Group();
-      var u=new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.55,len*0.45,6),steelMat);
-      u.position.y=-len*0.2; u.rotation.z=sx*0.5; leg.add(u);
-      var l=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.35,len*0.4,6),steelMat);
-      l.position.set(sx*6,-len*0.5,0); l.rotation.z=sx*0.85; leg.add(l);
-      leg.position.set(sx*10,-8,z); root.add(leg);
-    });
-    var shaft=new THREE.Mesh(new THREE.CylinderGeometry(1.8,1.8,42,12),steelMat);
-    shaft.rotation.x=Math.PI/2; root.add(shaft);
+
+    var thorax=new THREE.Mesh(new THREE.BoxGeometry(20,15,44),bodyMat);
+    addPart(thorax,root,new THREE.Vector3(0,1,0));
+
+    var internals=new THREE.Group();root.add(internals);
+    var crankShaft=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,38,14),steelMat);
+    crankShaft.rotation.x=Math.PI/2;internals.add(crankShaft);
     var disks=[];
-    [-14,14].forEach(function(z){
-      var d=new THREE.Mesh(new THREE.CylinderGeometry(9,9,3.5,24),accentMat);
-      d.rotation.x=Math.PI/2; d.position.z=z; root.add(d); disks.push(d);
+    [-12,12].forEach(function(z){
+      var d=new THREE.Mesh(new THREE.CylinderGeometry(8,8,3.2,28),accentMat);
+      d.rotation.x=Math.PI/2;d.position.z=z;internals.add(d);disks.push(d);
+      var pin=new THREE.Mesh(new THREE.SphereGeometry(2.2,10,8),steelMat);
+      pin.position.set(6,0,z);internals.add(pin);
     });
-    function makeWing(side,isFore){
+    var rockers=[];
+    [[-1,10],[-1,-10],[1,10],[1,-10]].forEach(function(p){
+      var r=new THREE.Mesh(new THREE.BoxGeometry(2.2,10,2.2),accentMat);
+      r.position.set(p[0]*7,2,p[1]);internals.add(r);rockers.push(r);
+    });
+
+    var head=new THREE.Mesh(new THREE.SphereGeometry(10,22,18),bodyMat);
+    head.position.set(0,2,32);
+    addPart(head,root,new THREE.Vector3(0,0.4,1));
+
+    function makeCompoundEye(side){
       var g=new THREE.Group();
-      var span=isFore?85:78;
-      var shape=new THREE.Shape();
-      shape.moveTo(0,0);
-      shape.quadraticCurveTo(span*0.35,28,span*0.9,7);
-      shape.quadraticCurveTo(span,0,span*0.92,-9);
-      shape.quadraticCurveTo(span*0.5,-20,span*0.15,-7);
-      shape.lineTo(0,0);
-      var mem=new THREE.Mesh(new THREE.ShapeGeometry(shape,6),wingMat);
-      mem.rotation.x=-Math.PI/2; if(side<0) mem.scale.x=-1; g.add(mem);
-      var spar=new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.65,span*0.95,6),steelMat);
-      spar.rotation.z=Math.PI/2; spar.position.set(side*span*0.47,0.8,0); g.add(spar);
+      g.position.set(side*7.8,3.5,36);
+      var base=new THREE.Mesh(new THREE.SphereGeometry(5.6,16,12),eyeMat);
+      base.scale.set(1,1.15,0.95);g.add(base);
+      for(var i=0;i<48;i++){
+        var u=Math.random()*Math.PI;
+        var v=Math.random()*Math.PI*0.9+0.15;
+        var r=5.35;
+        var f=new THREE.Mesh(new THREE.SphereGeometry(0.55,6,5),facetMat);
+        f.position.set(
+          side*Math.sin(v)*Math.cos(u)*r*0.55 + Math.sin(v)*Math.sin(u)*r*0.35,
+          Math.cos(v)*r*0.7,
+          Math.sin(v)*Math.cos(u)*r*0.55
+        );
+        g.add(f);
+      }
       return g;
     }
-    var wings={}, rods={};
-    [['FL',-1,true,12],['FR',1,true,12],['HL',-1,false,-12],['HR',1,false,-12]].forEach(function(item){
-      var key=item[0],side=item[1],isFore=item[2],z=item[3];
-      var w=makeWing(side,isFore); w.position.set(side*14,10,z); root.add(w); wings[key]=w;
-      var rod=new THREE.Mesh(new THREE.CylinderGeometry(1,1,20,6),accentMat); root.add(rod); rods[key]=rod;
+    var eyeL=makeCompoundEye(-1);addPart(eyeL,root,new THREE.Vector3(-1,0.3,0.8));
+    var eyeR=makeCompoundEye(1);addPart(eyeR,root,new THREE.Vector3(1,0.3,0.8));
+
+    var abdomen=[];
+    for(var i=0;i<7;i++){
+      var t=i/6,r=6.2*(1-t*0.7);
+      var seg=new THREE.Mesh(new THREE.CylinderGeometry(r*0.92,r,11,14),bodyMat);
+      seg.rotation.x=Math.PI/2;seg.position.z=-26-i*11.5;
+      addPart(seg,root,new THREE.Vector3(0,-0.15,-1));
+      abdomen.push(seg);
+    }
+
+    [[-1,8,20],[-1,-2,18],[-1,-12,16],[1,8,20],[1,-2,18],[1,-12,16]].forEach(function(item){
+      var sx=item[0],z=item[1],len=item[2];
+      var leg=new THREE.Group();
+      var u=new THREE.Mesh(new THREE.CylinderGeometry(0.65,0.5,len*0.42,7),steelMat);
+      u.position.y=-len*0.18;u.rotation.z=sx*0.55;leg.add(u);
+      var l=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.32,len*0.38,7),steelMat);
+      l.position.set(sx*5.5,-len*0.48,0);l.rotation.z=sx*0.9;leg.add(l);
+      leg.position.set(sx*9,-7.5,z);
+      addPart(leg,root,new THREE.Vector3(sx*1.2,-1,0));
     });
 
-    var flapping=true, cutaway=0, targetCut=0, time=0;
+    function makeWing(side,isFore){
+      var g=new THREE.Group();
+      var span=isFore?82:74;
+      var shape=new THREE.Shape();
+      shape.moveTo(0,0);
+      shape.quadraticCurveTo(span*0.32,26,span*0.88,6);
+      shape.quadraticCurveTo(span,0,span*0.9,-8);
+      shape.quadraticCurveTo(span*0.48,-18,span*0.14,-6);
+      shape.lineTo(0,0);
+      var mem=new THREE.Mesh(new THREE.ShapeGeometry(shape,8),wingMat);
+      mem.rotation.x=-Math.PI/2;if(side<0) mem.scale.x=-1;g.add(mem);
+      var spar=new THREE.Mesh(new THREE.CylinderGeometry(0.85,0.55,span*0.92,6),steelMat);
+      spar.rotation.z=Math.PI/2;spar.position.set(side*span*0.46,0.7,0);g.add(spar);
+      for(var v=0;v<5;v++){
+        var t=(v+1)/6;
+        var vein=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.12,span*0.7*(1-t*0.3),5),veinMat);
+        vein.rotation.z=Math.PI/2;
+        vein.position.set(side*span*0.38*t,0.3,(v%2===0?1:-1)*3*(1-t));
+        g.add(vein);
+      }
+      var joint=new THREE.Mesh(new THREE.SphereGeometry(2.4,10,8),accentMat);
+      joint.position.set(side*2,0,0);g.add(joint);
+      return g;
+    }
+
+    var wings={}, rods={};
+    [['FL',-1,true,11],['FR',1,true,11],['HL',-1,false,-11],['HR',1,false,-11]].forEach(function(item){
+      var key=item[0],side=item[1],isFore=item[2],z=item[3];
+      var w=makeWing(side,isFore);
+      w.position.set(side*13,9,z);
+      addPart(w,root,new THREE.Vector3(side*1.5,0.8,z>0?0.3:-0.3));
+      wings[key]=w;
+      var rod=new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,18,7),accentMat);
+      root.add(rod);rods[key]=rod;
+    });
+
+    var flapping=true, cutaway=0, targetCut=0, explode=0, targetExplode=0, time=0;
+
     function update(th){
-      var flapF=Math.sin(th)*0.75, flapH=Math.sin(th+Math.PI*0.5)*0.75;
-      shaft.rotation.z=th; disks.forEach(function(d){d.rotation.z=th;});
-      [['FL',flapF,-1,12],['FR',flapF,1,12],['HL',flapH,-1,-12],['HR',flapH,1,-12]].forEach(function(item){
+      var flapF=Math.sin(th)*0.78, flapH=Math.sin(th+Math.PI*0.55)*0.78;
+      crankShaft.rotation.z=th;
+      disks.forEach(function(d){d.rotation.z=th;});
+      rockers.forEach(function(r,i){r.rotation.z=(i%2===0?flapF:flapH)*0.6;});
+
+      [['FL',flapF,-1,11],['FR',flapF,1,11],['HL',flapH,-1,-11],['HR',flapH,1,-11]].forEach(function(item){
         var key=item[0],flap=item[1],side=item[2],z=item[3];
-        var w=wings[key]; w.rotation.z=flap; w.position.y=10+Math.sin(Math.abs(flap))*2.5;
-        var rod=rods[key], tipX=side*14, tipY=w.position.y;
-        rod.position.set(tipX*0.5, tipY*0.5, z);
-        var len=Math.hypot(tipX,tipY)||1; rod.scale.y=len/20; rod.rotation.z=Math.atan2(tipY,tipX)-Math.PI/2;
+        var w=wings[key];
+        w.rotation.z=flap;
+        var baseY=9+Math.sin(Math.abs(flap))*2.2;
+        var ex = side * explode * 26;
+        var ey = explode * 14;
+        w.position.set(side*13 + ex, baseY + ey, z);
+
+        var rod=rods[key];
+        var tipX=side*13+ex, tipY=baseY+ey;
+        rod.position.set(tipX*0.45, tipY*0.45, z);
+        var len=Math.hypot(tipX,tipY)||1;
+        rod.scale.y=len/18;
+        rod.rotation.z=Math.atan2(tipY,tipX)-Math.PI/2;
       });
-      cutaway+=(targetCut-cutaway)*0.08;
+
+      cutaway+=(targetCut-cutaway)*0.09;
       thorax.material.transparent=cutaway>0.02;
-      thorax.material.opacity=1-cutaway*0.88;
-      thorax.material.depthWrite=cutaway<0.5;
+      thorax.material.opacity=1-cutaway*0.9;
+      thorax.material.depthWrite=cutaway<0.45;
+      internals.visible=cutaway>0.08;
+
+      explode+=(targetExplode-explode)*0.07;
+      var e=explode;
+      parts.forEach(function(p){
+        if(Object.values(wings).indexOf(p.mesh)>=0) return;
+        p.mesh.position.copy(p.home).addScaledVector(p.dir, e*26);
+      });
     }
 
     document.getElementById('btnFlap').onclick=function(){
-      flapping=!flapping; this.textContent=flapping?'拍翅中':'已暫停'; this.className=flapping?'':'secondary';
+      flapping=!flapping;this.textContent=flapping?'拍翅中':'已暫停';this.className=flapping?'':'secondary';
     };
     document.getElementById('btnCut').onclick=function(){
-      targetCut=targetCut>0.5?0:1; this.textContent=targetCut>0.5?'關閉胸部':'打開胸部'; this.className=targetCut>0.5?'':'secondary';
+      targetCut=targetCut>0.5?0:1;
+      this.textContent=targetCut>0.5?'關閉胸部':'打開胸部';
+      this.className=targetCut>0.5?'':'secondary';
+    };
+    document.getElementById('btnExplode').onclick=function(){
+      targetExplode=targetExplode>0.5?0:1;
+      this.textContent=targetExplode>0.5?'組合起來':'炸裂展開';
+      this.className=targetExplode>0.5?'':'secondary';
     };
     document.getElementById('btnReset').onclick=function(){
-      spherical.radius=160; spherical.theta=0.7; spherical.phi=1.15; updateCam();
+      spherical.radius=150;spherical.theta=0.75;spherical.phi=1.12;updateCam();
+      targetCut=0;targetExplode=0;
+      document.getElementById('btnCut').textContent='打開胸部';
+      document.getElementById('btnCut').className='secondary';
+      document.getElementById('btnExplode').textContent='炸裂展開';
+      document.getElementById('btnExplode').className='secondary';
     };
     addEventListener('resize',function(){
-      camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+      camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
       renderer.setSize(innerWidth,innerHeight);
     });
 
     var last=performance.now();
     function animate(now){
       requestAnimationFrame(animate);
-      var dt=Math.min(0.05,(now-last)/1000); last=now;
+      var dt=Math.min(0.05,(now-last)/1000);last=now;
       if(flapping) time+=dt;
-      update(time*2.2);
+      update(time*2.15);
       renderer.render(scene,camera);
     }
     requestAnimationFrame(animate);
