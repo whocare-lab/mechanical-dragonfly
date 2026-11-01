@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Mechanical Dragonfly · 可拆解機械蜻蜓</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0e16; font-family: system-ui, -apple-system, sans-serif; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #ui {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 16px 16px 28px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.75));
+    color: #e8eef8;
+    pointer-events: none;
+  }
+  #ui .row { display: flex; gap: 10px; flex-wrap: wrap; pointer-events: auto; margin-bottom: 10px; }
+  button {
+    background: rgba(255,154,26,0.9);
+    color: #111;
+    border: none;
+    border-radius: 999px;
+    padding: 10px 18px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  button.secondary { background: rgba(255,255,255,0.12); color: #e8eef8; }
+  button.active { outline: 2px solid #fff; }
+  #info { font-size: 13px; opacity: 0.85; line-height: 1.45; }
+  #title { font-size: 15px; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.02em; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="title">Mechanical Dragonfly · 機械蜻蜓</div>
+  <div class="row">
+    <button id="btnFlap" class="active">拍翅中</button>
+    <button id="btnCut" class="secondary">打開胸部</button>
+    <button id="btnReset" class="secondary">重置視角</button>
+  </div>
+  <div id="info">拖曳旋轉 · 雙指/滾輪縮放 · 點按鈕可暫停拍翅或切開機身</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const canvas = document.createElement('canvas');
+document.body.prepend(canvas);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#0a0e16');
+
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.5, 500);
+camera.position.set(90, 55, 130);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.target.set(0, 6, 0);
+controls.minDistance = 50;
+controls.maxDistance = 260;
+
+// Lights
+const key = new THREE.DirectionalLight('#fff5e8', 2.8);
+key.position.set(60, 90, 50);
+scene.add(key);
+const fill = new THREE.DirectionalLight('#88b0ff', 0.9);
+fill.position.set(-50, 30, -40);
+scene.add(fill);
+const rim = new THREE.DirectionalLight('#ffb040', 1.1);
+rim.position.set(-30, 40, -80);
+scene.add(rim);
+scene.add(new THREE.HemisphereLight('#c8d8ff', '#1a2030', 0.55));
+scene.add(new THREE.AmbientLight('#304050', 0.45));
+
+// Materials
+const bodyMat = new THREE.MeshStandardMaterial({ color: '#1c2636', roughness: 0.45, metalness: 0.15 });
+const accentMat = new THREE.MeshStandardMaterial({ color: '#ff9a1a', roughness: 0.28, metalness: 0.4, emissive: '#ff9a1a', emissiveIntensity: 0.22 });
+const steelMat = new THREE.MeshStandardMaterial({ color: '#b8c0ce', roughness: 0.28, metalness: 0.7 });
+const wingMat = new THREE.MeshPhysicalMaterial({
+  color: '#d8e6f8', roughness: 0.25, metalness: 0.05,
+  transparent: true, opacity: 0.78, side: THREE.DoubleSide,
+  clearcoat: 0.5, clearcoatRoughness: 0.25
+});
+const eyeMat = new THREE.MeshStandardMaterial({ color: '#0a1018', roughness: 0.2, emissive: '#152030', emissiveIntensity: 0.35 });
+
+const root = new THREE.Group();
+scene.add(root);
+
+// Body
+const thorax = new THREE.Mesh(new THREE.BoxGeometry(22, 16, 48), bodyMat);
+root.add(thorax);
+
+const head = new THREE.Mesh(new THREE.SphereGeometry(11, 24, 18), bodyMat);
+head.position.set(0, 2, 34);
+root.add(head);
+
+for (const sx of [-1, 1]) {
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(6.2, 16, 12), eyeMat);
+  eye.position.set(sx * 8.5, 4, 38);
+  eye.scale.set(1, 1.2, 0.9);
+  root.add(eye);
+}
+
+// Abdomen
+for (let i = 0; i < 7; i++) {
+  const t = i / 6;
+  const r = 6.5 * (1 - t * 0.72);
+  const seg = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.95, r, 12, 12), bodyMat);
+  seg.rotation.x = Math.PI / 2;
+  seg.position.z = -28 - i * 12;
+  root.add(seg);
+}
+
+// Legs (simple)
+for (const [sx, z, len] of [[-1, 10, 22], [1, 10, 22], [-1, -2, 20], [1, -2, 20], [-1, -14, 18], [1, -14, 18]]) {
+  const leg = new THREE.Group();
+  const u = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.55, len * 0.45, 6), steelMat);
+  u.position.y = -len * 0.2;
+  u.rotation.z = sx * 0.5;
+  leg.add(u);
+  const l = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.35, len * 0.4, 6), steelMat);
+  l.position.set(sx * 6, -len * 0.5, 0);
+  l.rotation.z = sx * 0.85;
+  leg.add(l);
+  leg.position.set(sx * 10, -8, z);
+  root.add(leg);
+}
+
+// Drive visuals
+const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 42, 12), steelMat);
+shaft.rotation.x = Math.PI / 2;
+root.add(shaft);
+
+const disks = [];
+for (const z of [-14, 14]) {
+  const d = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 3.5, 24), accentMat);
+  d.rotation.x = Math.PI / 2;
+  d.position.z = z;
+  root.add(d);
+  disks.push(d);
+}
+
+// Wings
+function makeWing(side, isFore) {
+  const g = new THREE.Group();
+  const span = isFore ? 85 : 78;
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 0);
+  shape.quadraticCurveTo(span * 0.35, 28, span * 0.9, 7);
+  shape.quadraticCurveTo(span, 0, span * 0.92, -9);
+  shape.quadraticCurveTo(span * 0.5, -20, span * 0.15, -7);
+  shape.lineTo(0, 0);
+  const mem = new THREE.Mesh(new THREE.ShapeGeometry(shape, 8), wingMat);
+  mem.rotation.x = -Math.PI / 2;
+  if (side < 0) mem.scale.x = -1;
+  g.add(mem);
+  const spar = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.65, span * 0.95, 6), steelMat);
+  spar.rotation.z = Math.PI / 2;
+  spar.position.set(side * span * 0.47, 0.8, 0);
+  g.add(spar);
+  return g;
+}
+
+const wings = {};
+const rods = {};
+for (const [key, side, isFore, z] of [
+  ['FL', -1, true, 12], ['FR', 1, true, 12],
+  ['HL', -1, false, -12], ['HR', 1, false, -12]
+]) {
+  const w = makeWing(side, isFore);
+  w.position.set(side * 14, 10, z);
+  root.add(w);
+  wings[key] = w;
+
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 20, 6), accentMat);
+  root.add(rod);
+  rods[key] = rod;
+}
+
+// State
+let flapping = true;
+let cutaway = 0;
+let targetCut = 0;
+let time = 0;
+
+function update(th) {
+  const flapF = Math.sin(th) * 0.75;
+  const flapH = Math.sin(th + Math.PI * 0.5) * 0.75;
+
+  shaft.rotation.z = th;
+  disks.forEach(d => d.rotation.z = th);
+
+  for (const [key, flap, side, z] of [
+    ['FL', flapF, -1, 12], ['FR', flapF, 1, 12],
+    ['HL', flapH, -1, -12], ['HR', flapH, 1, -12]
+  ]) {
+    const w = wings[key];
+    w.rotation.z = flap;
+    w.position.y = 10 + Math.sin(Math.abs(flap)) * 2.5;
+
+    const rod = rods[key];
+    const tipX = side * 14;
+    const tipY = w.position.y;
+    rod.position.set(tipX * 0.5, tipY * 0.5, z);
+    const len = Math.hypot(tipX, tipY) || 1;
+    rod.scale.y = len / 20;
+    rod.rotation.z = Math.atan2(tipY, tipX) - Math.PI / 2;
+  }
+
+  // cutaway
+  cutaway += (targetCut - cutaway) * 0.08;
+  thorax.material.transparent = cutaway > 0.02;
+  thorax.material.opacity = 1 - cutaway * 0.88;
+  thorax.material.depthWrite = cutaway < 0.5;
+}
+
+// UI
+const btnFlap = document.getElementById('btnFlap');
+const btnCut = document.getElementById('btnCut');
+const btnReset = document.getElementById('btnReset');
+
+btnFlap.onclick = () => {
+  flapping = !flapping;
+  btnFlap.textContent = flapping ? '拍翅中' : '已暫停';
+  btnFlap.classList.toggle('active', flapping);
+  btnFlap.classList.toggle('secondary', !flapping);
+};
+btnCut.onclick = () => {
+  targetCut = targetCut > 0.5 ? 0 : 1;
+  btnCut.textContent = targetCut > 0.5 ? '關閉胸部' : '打開胸部';
+  btnCut.classList.toggle('active', targetCut > 0.5);
+};
+btnReset.onclick = () => {
+  camera.position.set(90, 55, 130);
+  controls.target.set(0, 6, 0);
+  controls.update();
+};
+
+// Resize
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// Loop
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  if (flapping) time += dt;
+  const th = time * 2.2;
+  update(th);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
